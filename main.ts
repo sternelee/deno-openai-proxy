@@ -61,7 +61,10 @@ serve(async (request: Request) => {
 
       for await (const chunk of rawRes.body as any) {
         const data = decoder.decode(chunk);
-        if (data.includes("[DONE]")) return;
+        if (data.includes("[DONE]")) {
+          return client.send({ type: "done", status: 200 });
+        }
+
         try {
           const json = JSON.parse(data);
           const text = json.choices[0].delta?.content;
