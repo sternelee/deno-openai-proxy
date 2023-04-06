@@ -19,66 +19,70 @@ serve(async (request: Request) => {
   }
 
   const { socket, response } = Deno.upgradeWebSocket(request);
-  const cid = url.pathname.split("/")[1];
+  const cid = url.pathname.split("/ws/")[1];
   socket.onopen = () => console.log("socket opened");
   if (cid && !clients.get(cid)) {
     clients.set(cid, socket);
   }
   socket.onmessage = async (e) => {
-    const { type, action, key, ...options } = e.data;
-    console.log("socket message:", e.data);
-    // 采用 socket 方式返回分流信息
-    const client = clients.get(cid) || socket;
-    if (!client) return;
-    if (type === "chat") {
-      const rawRes = await fetch(`${OPENAI_API_HOST}${action}`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-        },
-        method: "POST",
-        body: JSON.stringify({
-          // max_tokens: 4096 - tokens,
-          stream: true,
-          ...options,
-        }),
-      })
-        .catch((err) => {
+    try {
+      const { type, action, key, ...options } = JSON.parse(e.data);
+      console.log("socket message:", e.data);
+      // 采用 socket 方式返回分流信息
+      const client = clients.get(cid) || socket;
+      if (!client) return;
+      if (type === "chat") {
+        const rawRes = await fetch(`${OPENAI_API_HOST}${action}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${key}`,
+          },
+          method: "POST",
+          body: JSON.stringify({
+            // max_tokens: 4096 - tokens,
+            stream: true,
+            ...options,
+          }),
+        })
+          .catch((err) => {
+            return client.send({
+              type: "fail",
+              status: 500,
+              message: err.message,
+            });
+          });
+
+        if (!rawRes.ok) {
           return client.send({
             type: "fail",
-            status: 500,
-            message: err.message,
-          });
-        });
-
-      if (!rawRes.ok) {
-        return client.send({
-          type: "fail",
-          status: rawRes.status,
-          message: rawRes.statusText,
-        });
-      }
-
-      for await (const chunk of rawRes.body as any) {
-        const data = decoder.decode(chunk);
-        if (data.includes("[DONE]")) {
-          return client.send({ type: "done", status: 200 });
-        }
-
-        try {
-          const json = JSON.parse(data);
-          const text = json.choices[0].delta?.content;
-          client.send({ type: "ok", status: 200, content: text });
-        } catch (e) {
-          client.send({
-            type: "fail",
-            status: 200,
-            content: e.message.toString(),
+            status: rawRes.status,
+            message: rawRes.statusText,
           });
         }
+
+        for await (const chunk of rawRes.body as any) {
+          const data = decoder.decode(chunk);
+          if (data.includes("[DONE]")) {
+            return client.send({ type: "done", status: 200 });
+          }
+
+          try {
+            const json = JSON.parse(data);
+            const text = json.choices[0].delta?.content;
+            client.send({ type: "ok", status: 200, content: text });
+          } catch (e) {
+            client.send({
+              type: "fail",
+              status: 200,
+              content: e.message.toString(),
+            });
+          }
+        }
+      } else {
+        socket.send(new Date().toString());
       }
-    } else {
-      socket.send(new Date().toString());
+    } catch (e) {
+        socket.send(e.message);
     }
   };
   socket.onerror = (e) => console.log("socket errored:", e);
