@@ -7,9 +7,9 @@ import { createParser } from "https://esm.sh/eventsource-parser@1.0.0";
 
 const OPENAI_API_HOST = "api.openai.com";
 // const OPENAI_API_HOST = "lee-chat.deno.dev";
-const APIKEY = "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";
-const appid = "wx1b925896c27d57ba";
-const secret = "71be88e48b04efaa4e0c900e8e105195";
+const APIKEY = Deno.env.get("OPEN_AI_KEY");
+const appid = Deno.env.get("APPID");
+const secret = Deno.env.get("SECRET");
 
 const clients = new Map();
 
@@ -25,11 +25,9 @@ serve(async (request: Request) => {
 
     if (url.pathname === "/jscode2session") {
       return await fetch(
-        `https://api.weixin.qq.com/sns/jscode2session?js_code=${
-          url.searchParams.get(
-            "js_code",
-          )
-        }&appid=${appid}&secret=${secret}&grant_type=authorization_code`,
+        `https://api.weixin.qq.com/sns/jscode2session?js_code=${url.searchParams.get(
+          "js_code"
+        )}&appid=${appid}&secret=${secret}&grant_type=authorization_code`
       );
     }
 
@@ -70,7 +68,7 @@ serve(async (request: Request) => {
               type: "fail",
               status: 500,
               message: err.message,
-            }),
+            })
           );
         });
 
@@ -81,7 +79,7 @@ serve(async (request: Request) => {
               type: "fail",
               status: rawRes.status,
               message: rawRes.statusText,
-            }),
+            })
           );
         }
         const streamParser = (event: ParsedEvent | ReconnectInterval) => {
@@ -94,7 +92,7 @@ serve(async (request: Request) => {
               const json = JSON.parse(data);
               const text = json.choices[0].delta?.content;
               client.send(
-                JSON.stringify({ type: "ok", status: 200, content: text }),
+                JSON.stringify({ type: "ok", status: 200, content: text })
               );
             } catch (e) {
               client.send(
@@ -102,7 +100,7 @@ serve(async (request: Request) => {
                   type: "fail",
                   status: 200,
                   content: e.message.toString(),
-                }),
+                })
               );
             }
           }
