@@ -1,6 +1,15 @@
 import { serve } from "https://deno.land/std@0.181.0/http/server.ts";
+import type {
+  ParsedEvent,
+  ReconnectInterval,
+} from "https://esm.sh/eventsource-parser@1.0.0";
+import { createParser } from "https://esm.sh/eventsource-parser@1.0.0";
 
 const OPENAI_API_HOST = "api.openai.com";
+// const OPENAI_API_HOST = "lee-chat.deno.dev";
+const APIKEY = "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";
+const appid = "wx1b925896c27d57ba";
+const secret = "71be88e48b04efaa4e0c900e8e105195";
 
 const clients = new Map();
 
@@ -12,6 +21,16 @@ serve(async (request: Request) => {
   if (upgrade.toLowerCase() != "websocket") {
     if (url.pathname === "/") {
       return fetch(new URL("./Readme.md", import.meta.url));
+    }
+
+    if (url.pathname === "/jscode2session") {
+      return await fetch(
+        `https://api.weixin.qq.com/sns/jscode2session?js_code=${
+          url.searchParams.get(
+            "js_code",
+          )
+        }&appid=${appid}&secret=${secret}&grant_type=authorization_code`,
+      );
     }
 
     url.host = OPENAI_API_HOST;
@@ -32,10 +51,12 @@ serve(async (request: Request) => {
       const client = clients.get(cid) || socket;
       if (!client) return;
       if (type === "chat") {
-        const rawRes = await fetch(`${OPENAI_API_HOST}${action}`, {
+        const auth = key.includes("l5e2e0") ? APIKEY : key;
+        const url = `https://${OPENAI_API_HOST}${action}`;
+        const rawRes = await fetch(url, {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${key}`,
+            Authorization: `Bearer ${auth}`,
           },
           method: "POST",
           body: JSON.stringify({
@@ -43,46 +64,58 @@ serve(async (request: Request) => {
             stream: true,
             ...options,
           }),
-        })
-          .catch((err) => {
-            return client.send({
+        }).catch((err) => {
+          return client.send(
+            JSON.stringify({
               type: "fail",
               status: 500,
               message: err.message,
-            });
-          });
+            }),
+          );
+        });
 
+        // console.log('rawRes:', rawRes)
         if (!rawRes.ok) {
-          return client.send({
-            type: "fail",
-            status: rawRes.status,
-            message: rawRes.statusText,
-          });
-        }
-
-        for await (const chunk of rawRes.body as any) {
-          const data = decoder.decode(chunk);
-          if (data.includes("[DONE]")) {
-            return client.send({ type: "done", status: 200 });
-          }
-
-          try {
-            const json = JSON.parse(data);
-            const text = json.choices[0].delta?.content;
-            client.send({ type: "ok", status: 200, content: text });
-          } catch (e) {
-            client.send({
+          return client.send(
+            JSON.stringify({
               type: "fail",
-              status: 200,
-              content: e.message.toString(),
-            });
+              status: rawRes.status,
+              message: rawRes.statusText,
+            }),
+          );
+        }
+        const streamParser = (event: ParsedEvent | ReconnectInterval) => {
+          if (event.type === "event") {
+            const data = event.data;
+            if (data === "[DONE]") {
+              return client.send(JSON.stringify({ type: "done", status: 200 }));
+            }
+            try {
+              const json = JSON.parse(data);
+              const text = json.choices[0].delta?.content;
+              client.send(
+                JSON.stringify({ type: "ok", status: 200, content: text }),
+              );
+            } catch (e) {
+              client.send(
+                JSON.stringify({
+                  type: "fail",
+                  status: 200,
+                  content: e.message.toString(),
+                }),
+              );
+            }
           }
+        };
+        const parser = createParser(streamParser);
+        for await (const chunk of rawRes.body as any) {
+          parser.feed(decoder.decode(chunk));
         }
       } else {
         socket.send(new Date().toString());
       }
     } catch (e) {
-        socket.send(e.message);
+      socket.send(e.message);
     }
   };
   socket.onerror = (e) => console.log("socket errored:", e);

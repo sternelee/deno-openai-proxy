@@ -11,6 +11,9 @@
     "https://deno.land/std@0.181.0/async/pool.ts": "fd082bd4aaf26445909889435a5c74334c017847842ec035739b4ae637ae8260",
     "https://deno.land/std@0.181.0/async/retry.ts": "dd19d93033d8eaddbfcb7654c0366e9d3b0a21448bdb06eba4a7d8a8cf936a92",
     "https://deno.land/std@0.181.0/async/tee.ts": "47e42d35f622650b02234d43803d0383a89eb4387e1b83b5a40106d18ae36757",
-    "https://deno.land/std@0.181.0/http/server.ts": "cbb17b594651215ba95c01a395700684e569c165a567e4e04bba327f41197433"
+    "https://deno.land/std@0.181.0/http/server.ts": "cbb17b594651215ba95c01a395700684e569c165a567e4e04bba327f41197433",
+    "https://esm.sh/eventsource-parser@1.0.0": "10d227fc27df78f37a892bc8be34dc67de0cecb2cef8afe0471590bde616bc4b",
+    "https://esm.sh/v114/eventsource-parser@1.0.0/deno/eventsource-parser.mjs": "715c2d87fcebd65a53f1fb8bac205fd8f79f1b59f61ad52d0b1a94e04ca0df98",
+    "https://esm.sh/v114/eventsource-parser@1.0.0/dist/index.d.ts": "14547528fb5596b49e9fd75632baa8871fc2bb56151513723e9dfa6d15ebd0c3"
   }
 }
