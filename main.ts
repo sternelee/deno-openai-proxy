@@ -18,6 +18,8 @@ const decoder = new TextDecoder();
 serve(async (request: Request) => {
   const url = new URL(request.url);
   const upgrade = request.headers.get("upgrade") || "";
+  console.log('URL:', url.pathname)
+  console.log('upgrade:', upgrade)
   if (upgrade.toLowerCase() != "websocket") {
     if (url.pathname === "/") {
       return fetch(new URL("./Readme.md", import.meta.url));
