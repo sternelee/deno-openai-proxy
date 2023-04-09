@@ -8,10 +8,33 @@ import { createParser } from "https://esm.sh/eventsource-parser@1.0.0";
 const OPENAI_API_HOST = "api.openai.com";
 // const OPENAI_API_HOST = "lee-chat.deno.dev";
 const APIKEY = Deno.env.get("OPEN_AI_KEY");
-const appid = Deno.env.get("APPID");
-const secret = Deno.env.get("SECRET");
+const APPID = Deno.env.get("APPID");
+const SECRET = Deno.env.get("SECRET");
+const MAX_DAY_COUNT = 3
+const MY_KEY = 'l5e2e0'
 
 const clients = new Map();
+const users : {
+  [openid: string]: {
+    day: string;
+    count: number;
+  }
+}= {};
+
+const getDayCount = (openid: string) => {
+  const now = new Date().toLocaleDateString()
+  if (users[openid] && users[openid].day === now) {
+    if (users[openid].count >= MAX_DAY_COUNT) return 0
+    users[openid].count += 1
+    return users[openid].count
+  } else {
+    users[openid] = {
+      day: now,
+      count: 1
+    }
+    return 1
+  }
+}
 
 const decoder = new TextDecoder();
 
@@ -29,7 +52,7 @@ serve(async (request: Request) => {
       return await fetch(
         `https://api.weixin.qq.com/sns/jscode2session?js_code=${url.searchParams.get(
           "js_code"
-        )}&appid=${appid}&secret=${secret}&grant_type=authorization_code`
+        )}&appid=${APPID}&secret=${SECRET}&grant_type=authorization_code`
       );
     }
 
@@ -38,20 +61,20 @@ serve(async (request: Request) => {
   }
 
   const { socket, response } = Deno.upgradeWebSocket(request);
-  const cid = url.pathname.split("/ws/")[1];
+  const openid = url.pathname.split("/ws/")[1];
   socket.onopen = () => console.log("socket opened");
-  if (cid && !clients.get(cid)) {
-    clients.set(cid, socket);
+  if (openid && !clients.get(openid)) {
+    clients.set(openid, socket);
   }
   socket.onmessage = async (e) => {
     try {
       const { type, action, key, ...options } = JSON.parse(e.data);
       console.log("socket message:", e.data);
       // 采用 socket 方式返回分流信息
-      const client = clients.get(cid) || socket;
+      const client = clients.get(openid) || socket;
       if (!client) return;
       if (type === "chat") {
-        const auth = key.includes("l5e2e0") ? APIKEY : key;
+        const auth = key.includes(MY_KEY) && getDayCount(openid) > 0 ? APIKEY : key;
         const url = `https://${OPENAI_API_HOST}${action}`;
         const rawRes = await fetch(url, {
           headers: {
@@ -121,8 +144,8 @@ serve(async (request: Request) => {
   socket.onerror = (e) => console.log("socket errored:", e);
   socket.onclose = () => {
     console.log("socket closed");
-    if (cid && clients.get(cid)) {
-      clients.delete(cid);
+    if (openid && clients.get(openid)) {
+      clients.delete(openid);
     }
   };
   return response;
