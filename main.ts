@@ -5,8 +5,8 @@ import type {
 } from "https://esm.sh/eventsource-parser@1.0.0";
 import { createParser } from "https://esm.sh/eventsource-parser@1.0.0";
 
-const OPENAI_API_HOST = "api.openai.com";
-// const OPENAI_API_HOST = "lee-chat.deno.dev";
+// const OPENAI_API_HOST = "api.openai.com";
+const OPENAI_API_HOST = "lee-chat.deno.dev";
 const APIKEY = Deno.env.get("OPEN_AI_KEY");
 const APPID = Deno.env.get("APPID") || "";
 const SECRET = Deno.env.get("SECRET") || "";
@@ -80,7 +80,7 @@ serve(async (request: Request) => {
   socket.onmessage = async (e) => {
     try {
       const { type, action, key, ...options } = JSON.parse(e.data);
-      console.log("socket message:", e.data);
+      // console.log("socket message:", e.data);
       // 采用 socket 方式返回分流信息
       // const client = clients.get(openid) || socket;
       const client = socket;
@@ -124,6 +124,7 @@ serve(async (request: Request) => {
         const streamParser = (event: ParsedEvent | ReconnectInterval) => {
           if (event.type === "event") {
             const data = event.data;
+            // console.log('data:', data)
             if (data === "[DONE]") {
               return client.send(JSON.stringify({ type: "done", status: 200 }));
             }
