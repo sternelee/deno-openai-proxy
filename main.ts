@@ -5,8 +5,8 @@ import type {
 } from "https://esm.sh/eventsource-parser@1.0.0";
 import { createParser } from "https://esm.sh/eventsource-parser@1.0.0";
 
-// const OPENAI_API_HOST = "api.openai.com";
-const OPENAI_API_HOST = "lee-chat.deno.dev";
+const OPENAI_API_HOST = "api.openai.com";
+// const OPENAI_API_HOST = "lee-chat.deno.dev";
 const APIKEY = Deno.env.get("OPEN_AI_KEY");
 const APPID = Deno.env.get("APPID") || "";
 const SECRET = Deno.env.get("SECRET") || "";
