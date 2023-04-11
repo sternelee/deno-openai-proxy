@@ -72,11 +72,11 @@ serve(async (request: Request) => {
   const { socket, response } = Deno.upgradeWebSocket(request);
   const openid = url.pathname.split("/ws/")[1];
   socket.onopen = () => {
-    // console.log("socket opened")
+    console.log("socket opened")
+    if (openid && !clients.get(openid)) {
+      clients.set(openid, socket);
+    }
   };
-  if (openid && !clients.get(openid)) {
-    clients.set(openid, socket);
-  }
   socket.onmessage = async (e) => {
     try {
       const { type, action, key, ...options } = JSON.parse(e.data);
