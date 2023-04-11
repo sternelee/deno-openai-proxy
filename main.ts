@@ -13,7 +13,7 @@ const SECRET = Deno.env.get("SECRET") || "";
 const MAX_DAY_COUNT = 3;
 const MY_KEY = "l5e2e0";
 
-const clients = new Map();
+// const clients = new Map();
 const users: {
   [openid: string]: {
     day: string;
@@ -73,16 +73,17 @@ serve(async (request: Request) => {
   const openid = url.pathname.split("/ws/")[1];
   socket.onopen = () => {
     console.log("socket opened")
-    if (openid && !clients.get(openid)) {
-      clients.set(openid, socket);
-    }
+    // if (openid && !clients.get(openid)) {
+    //   clients.set(openid, socket);
+    // }
   };
   socket.onmessage = async (e) => {
     try {
       const { type, action, key, ...options } = JSON.parse(e.data);
       console.log("socket message:", e.data);
       // 采用 socket 方式返回分流信息
-      const client = clients.get(openid) || socket;
+      // const client = clients.get(openid) || socket;
+      const client = socket;
       if (!client) return;
       if (type === "chat") {
         const auth = key.includes(MY_KEY) && getDayCount(openid) > 0
@@ -156,14 +157,14 @@ serve(async (request: Request) => {
   };
   socket.onerror = (e) => {
     console.log("socket errored:", e);
-    if (openid && clients.get(openid)) {
-      clients.delete(openid);
-    }
+    // if (openid && clients.get(openid)) {
+    //   clients.delete(openid);
+    // }
   };
   socket.onclose = () => {
-    if (openid && clients.get(openid)) {
-      clients.delete(openid);
-    }
+    // if (openid && clients.get(openid)) {
+    //   clients.delete(openid);
+    // }
   };
   return response;
 });
