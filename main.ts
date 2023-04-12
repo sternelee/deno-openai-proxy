@@ -4,6 +4,7 @@ import type {
   ReconnectInterval,
 } from "https://esm.sh/eventsource-parser@1.0.0";
 import { createParser } from "https://esm.sh/eventsource-parser@1.0.0";
+import * as tencentcloud from "https://esm.sh/tencentcloud-sdk-nodejs@4.0.578";
 
 const OPENAI_API_HOST = "api.openai.com";
 // const OPENAI_API_HOST = "lee-chat.deno.dev";
@@ -11,13 +12,42 @@ const APIKEY = Deno.env.get("OPEN_AI_KEY");
 const APPID = Deno.env.get("APPID") || "";
 const SECRET = Deno.env.get("SECRET") || "";
 const MAX_DAY_COUNT = 3;
-const MY_KEY = "l5e2e0";
+const MY_KEY = Deno.env.get("MY_KEY") || "l5e2e0";
 
-// const clients = new Map();
+const TmsClient = tencentcloud.tms.v20201229.Client;
+
+const TENCENT_CLOUD_SID = Deno.env.get("TENCENT_CLOUD_SID");
+const TENCENT_CLOUD_SKEY = Deno.env.get("TENCENT_CLOUD_SKEY");
+const TENCENT_CLOUD_AP = Deno.env.get("TENCENT_CLOUD_AP") || "ap-singapore";
+
+const clientConfig = {
+  credential: {
+    secretId: TENCENT_CLOUD_SID,
+    secretKey: TENCENT_CLOUD_SKEY,
+  },
+  region: TENCENT_CLOUD_AP,
+  profile: {
+    httpProfile: {
+      endpoint: "tms.tencentcloudapi.com",
+    },
+  },
+};
+const mdClient = TENCENT_CLOUD_SID && TENCENT_CLOUD_SKEY
+  ? new TmsClient(clientConfig)
+  : false;
+
 const users: {
   [openid: string]: {
     day: string;
     count: number;
+  };
+} = {};
+
+const sentences: {
+  [openid: string]: {
+    status: number;
+    char: string;
+    chars: string[];
   };
 } = {};
 
@@ -72,29 +102,26 @@ serve(async (request: Request) => {
   const { socket, response } = Deno.upgradeWebSocket(request);
   const openid = url.pathname.split("/ws/")[1];
   socket.onopen = () => {
-    console.log("socket opened")
-    // if (openid && !clients.get(openid)) {
-    //   clients.set(openid, socket);
-    // }
+    console.log("socket opened");
   };
   socket.onmessage = async (e) => {
     try {
-      const { type, action, key, ...options } = JSON.parse(e.data);
+      const { type, action, key, moderation_level = "", ...options } = JSON
+        .parse(e.data);
       // console.log("socket message:", e.data);
       // 采用 socket 方式返回分流信息
-      // const client = clients.get(openid) || socket;
-      const client = socket;
-      if (!client) return;
       if (type === "chat") {
         const auth = key.includes(MY_KEY) && getDayCount(openid) > 0
           ? APIKEY
           : key;
         const url = `https://${OPENAI_API_HOST}${action}`;
+        const controller = new AbortController();
         const rawRes = await fetch(url, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${auth}`,
           },
+          signal: controller.signal,
           method: "POST",
           body: JSON.stringify({
             // max_tokens: 4096 - tokens,
@@ -102,7 +129,7 @@ serve(async (request: Request) => {
             ...options,
           }),
         }).catch((err) => {
-          return client.send(
+          return socket.send(
             JSON.stringify({
               type: "fail",
               status: 500,
@@ -111,9 +138,18 @@ serve(async (request: Request) => {
           );
         });
 
+        if (!rawRes) {
+          return socket.send(
+            JSON.stringify({
+              type: "fail",
+              status: 500,
+              message: "no response",
+            }),
+          );
+        }
         // console.log('rawRes:', rawRes)
         if (!rawRes.ok) {
-          return client.send(
+          return socket.send(
             JSON.stringify({
               type: "fail",
               status: rawRes.status,
@@ -121,21 +157,60 @@ serve(async (request: Request) => {
             }),
           );
         }
-        const streamParser = (event: ParsedEvent | ReconnectInterval) => {
+        const streamParser = async (event: ParsedEvent | ReconnectInterval) => {
           if (event.type === "event") {
             const data = event.data;
             // console.log('data:', data)
             if (data === "[DONE]") {
-              return client.send(JSON.stringify({ type: "done", status: 200 }));
+              return socket.send(JSON.stringify({ type: "done", status: 200 }));
             }
             try {
               const json = JSON.parse(data);
-              const text = json.choices[0].delta?.content;
-              client.send(
-                JSON.stringify({ type: "ok", status: 200, content: text }),
+              const char = json.choices[0].delta?.content;
+              if (mdClient) {
+                if (!sentences[openid]) {
+                  sentences[openid] = { status: 0, char: "", chars: [] };
+                }
+                sentences[openid].char += char;
+                if (
+                  char == "。" || char == "？" || char == "！" || char == "\n"
+                ) {
+                  // 将断句 sentence 送审
+                  sentences[openid].chars.push(sentences[openid].char);
+                  sentences[openid].char = "";
+                }
+                if (
+                  sentences[openid].chars.length > 0 &&
+                  sentences[openid].status === 0
+                ) {
+                  const sentence = sentences[openid].chars.pop() || "";
+                  sentences[openid].status = 1;
+                  const md_result = await mdClient.TextModeration({
+                    Content: sentence,
+                  });
+                  sentences[openid].status = 0;
+                  const md_check = moderation_level == "high"
+                    ? md_result.Suggestion != "Pass"
+                    : md_result.Suggestion == "Block";
+                  if (md_check) {
+                    sentences[openid] = { status: 0, char: "", chars: [] };
+                    controller.abort();
+                    socket.send(
+                      JSON.stringify({
+                        type: "ok",
+                        status: 200,
+                        content: "这个话题不适合讨论，换个提问吧",
+                      }),
+                    );
+                    return;
+                  }
+                }
+              }
+              socket.send(
+                JSON.stringify({ type: "ok", status: 200, content: char }),
               );
             } catch (e) {
-              client.send(
+              socket.send(
                 JSON.stringify({
                   type: "fail",
                   status: 200,
@@ -158,14 +233,8 @@ serve(async (request: Request) => {
   };
   socket.onerror = (e) => {
     console.log("socket errored:", e);
-    // if (openid && clients.get(openid)) {
-    //   clients.delete(openid);
-    // }
   };
   socket.onclose = () => {
-    // if (openid && clients.get(openid)) {
-    //   clients.delete(openid);
-    // }
   };
   return response;
 });
