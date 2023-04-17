@@ -1,24 +1,35 @@
 import { serve } from "https://deno.land/std@0.181.0/http/server.ts";
-import type {
-  ParsedEvent,
-  ReconnectInterval,
-} from "https://esm.sh/eventsource-parser@1.0.0";
+import type { ParsedEvent, ReconnectInterval } from "https://esm.sh/eventsource-parser@1.0.0";
 import { createParser } from "https://esm.sh/eventsource-parser@1.0.0";
+import Replicate from "https://esm.sh/replicate@0.10.0";
 import * as tencentcloud from "https://esm.sh/tencentcloud-sdk-nodejs@4.0.578";
+import { parsePrompts } from "./prompt.ts";
 
 const OPENAI_API_HOST = "api.openai.com";
 // const OPENAI_API_HOST = "lee-chat.deno.dev";
 const APIKEY = Deno.env.get("OPEN_AI_KEY");
 const APPID = Deno.env.get("APPID") || "";
 const SECRET = Deno.env.get("SECRET") || "";
+const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN") || "";
 const MAX_DAY_COUNT = 3;
 const MY_KEY = Deno.env.get("MY_KEY") || "l5e2e0";
+
+// 文本转语音
+// https://learn.microsoft.com/en-us/azure/developer/javascript/tutorial/convert-text-to-speech-cognitive-services
 
 const TmsClient = tencentcloud.tms.v20201229.Client;
 
 const TENCENT_CLOUD_SID = Deno.env.get("TENCENT_CLOUD_SID");
 const TENCENT_CLOUD_SKEY = Deno.env.get("TENCENT_CLOUD_SKEY");
 const TENCENT_CLOUD_AP = Deno.env.get("TENCENT_CLOUD_AP") || "ap-singapore";
+
+const prompts = parsePrompts();
+
+const Config = {
+  MAX_DAY_COUNT,
+  MAX_DAY_AD_COUNT: 10,
+  prompts,
+};
 
 const clientConfig = {
   credential: {
@@ -35,6 +46,12 @@ const clientConfig = {
 const mdClient = TENCENT_CLOUD_SID && TENCENT_CLOUD_SKEY
   ? new TmsClient(clientConfig)
   : false;
+
+const replicate = REPLICATE_API_TOKEN
+  ? new Replicate({
+    auth: REPLICATE_API_TOKEN,
+  })
+  : null;
 
 const users: {
   [openid: string]: {
@@ -74,7 +91,8 @@ serve(async (request: Request) => {
   console.log("URL:", url.pathname);
   if (upgrade.toLowerCase() != "websocket") {
     if (url.pathname === "/") {
-      return fetch(new URL("./Readme.md", import.meta.url));
+      // return fetch(new URL("./Readme.md", import.meta.url));
+      return new Response("Hello World");
     }
 
     if (url.pathname === "/jscode2session") {
@@ -93,6 +111,20 @@ serve(async (request: Request) => {
         ));
       }
       return new Response(JSON.stringify(ret));
+    }
+
+    if (url.pathname === "/config") {
+      return new Response(JSON.stringify(Config));
+    }
+
+    if (url.pathname === "/replicate") {
+      if (replicate) {
+        const { model, input } = request.body as any;
+        const output = await replicate.run(model, { input });
+        return new Response(output);
+      } else {
+        return new Response(JSON.stringify({ code: -1, message: "not found" }));
+      }
     }
 
     url.host = OPENAI_API_HOST;
@@ -180,8 +212,8 @@ serve(async (request: Request) => {
                   sentences[openid].char = "";
                 }
                 if (
-                  sentences[openid].chars.length > 0 &&
-                  sentences[openid].status === 0
+                  sentences[openid].chars.length > 0
+                  && sentences[openid].status === 0
                 ) {
                   const sentence = sentences[openid].chars.pop() || "";
                   sentences[openid].status = 1;

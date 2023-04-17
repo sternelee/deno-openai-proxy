@@ -242,6 +242,7 @@
     "https://deno.land/std@0.181.0/async/tee.ts": "47e42d35f622650b02234d43803d0383a89eb4387e1b83b5a40106d18ae36757",
     "https://deno.land/std@0.181.0/http/server.ts": "cbb17b594651215ba95c01a395700684e569c165a567e4e04bba327f41197433",
     "https://esm.sh/eventsource-parser@1.0.0": "10d227fc27df78f37a892bc8be34dc67de0cecb2cef8afe0471590bde616bc4b",
+    "https://esm.sh/replicate@0.10.0": "4984994031d1ab42011faafc1baa0aadb6cc3aefe4b2234feaa3dbd7401fb165",
     "https://esm.sh/tencentcloud-sdk-nodejs@4.0.578": "ad3453a157ecc7668329c22891b54c102bd37df7ad913705f47d11695492c3bf",
     "https://esm.sh/v114/@types/node@16.18.12/buffer.d.ts": "621dbaf30f694370ff3439695bf82686d63f375c9d9c9935af9fc867e1287ee8",
     "https://esm.sh/v114/@types/node@16.18.12/crypto.d.ts": "052312500cf578d44484691e4649b32bfb6e4548a12ae7ef728fb074a929ce2d",
@@ -1030,6 +1031,8 @@
     "https://esm.sh/v114/tencentcloud-sdk-nodejs@4.0.578/tencentcloud/services/zj/index.d.ts": "6fdac15288a115b2e92c7a68092fbcf4c21df3bb55a8601e45b71efc7777e6a4",
     "https://esm.sh/v114/tencentcloud-sdk-nodejs@4.0.578/tencentcloud/services/zj/v20190121/zj_client.d.ts": "f84f04a252c0b2a53c32b7c5c7ca914a8c4dd5d79ac271cb1fc56d30d153e937",
     "https://esm.sh/v114/tencentcloud-sdk-nodejs@4.0.578/tencentcloud/services/zj/v20190121/zj_models.d.ts": "8ca0778346274fa0a87688458b93c06d0d51f4410f236c95990086b7b1927a09",
-    "https://esm.sh/v114/tslib@1.13.0/deno/tslib.mjs": "70843a91f806d1e2d157296be8e0a8a5f139b439275ba5cbe69d523298418452"
+    "https://esm.sh/v114/tslib@1.13.0/deno/tslib.mjs": "70843a91f806d1e2d157296be8e0a8a5f139b439275ba5cbe69d523298418452",
+    "https://esm.sh/v115/replicate@0.10.0/deno/replicate.mjs": "d87c3388e11820c4163a666a417aead1710131ff64bd232a289507f591682dd4",
+    "https://esm.sh/v115/replicate@0.10.0/index.d.ts": "331e1e39e9c2834ec2bf38477c777c424a0d15382197fa8c119d822226143c7f"
   }
 }
