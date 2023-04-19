@@ -1,20 +1,23 @@
 // import "https://deno.land/x/dotenv/load.ts";
 import { serve } from "https://deno.land/std@0.181.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.82.0/encoding/base64.ts";
-import type { ParsedEvent, ReconnectInterval } from "https://esm.sh/eventsource-parser@1.0.0";
+import type {
+  ParsedEvent,
+  ReconnectInterval,
+} from "https://esm.sh/eventsource-parser@1.0.0";
 import { createParser } from "https://esm.sh/eventsource-parser@1.0.0";
 import Replicate from "https://esm.sh/replicate@0.10.0";
 import * as tencentcloud from "https://esm.sh/tencentcloud-sdk-nodejs@4.0.578";
-import { parsePrompts } from "./prompt.ts";
+import { parsePrompts } from "./utils/prompt.ts";
+import { countTokens } from "./utils/index.ts";
 
-// const OPENAI_API_HOST = "api.openai.com";
-const OPENAI_API_HOST = Deno.env.get("OPENAI_API_HOST");
+const OPENAI_API_HOST = Deno.env.get("OPENAI_API_HOST") || "api.openai.com";
 const APIKEY = Deno.env.get("OPEN_AI_KEY");
 const APPID = Deno.env.get("APPID");
 const SECRET = Deno.env.get("SECRET");
 const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN");
 const MY_KEY = Deno.env.get("MY_KEY");
-const MAX_DAY_COUNT = 3;
+const MAX_DAY_COUNT = 5;
 
 // 文本转语音
 // https://learn.microsoft.com/en-us/azure/developer/javascript/tutorial/convert-text-to-speech-cognitive-services
@@ -28,25 +31,33 @@ const TENCENT_CLOUD_AP = Deno.env.get("TENCENT_CLOUD_AP") || "ap-singapore";
 const prompts = parsePrompts();
 
 const replicates = {
-  "ai-forever/kandinsky-2": "601eea49d49003e6ea75a11527209c4f510a93e2112c969d548fbb45b9c4f19f",
-  "stability-ai/stable-diffusion": "db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf",
-  "prompthero/openjourney": "9936c2001faa2194a261c01381f90e65261879985476014a0a37a334593a05eb",
-  "pixray/text2image": "5c347a4bfa1d4523a58ae614c2194e15f2ae682b57e3797a5bb468920aa70ebf",
+  "ai-forever/kandinsky-2":
+    "601eea49d49003e6ea75a11527209c4f510a93e2112c969d548fbb45b9c4f19f",
+  "stability-ai/stable-diffusion":
+    "db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf",
+  "prompthero/openjourney":
+    "9936c2001faa2194a261c01381f90e65261879985476014a0a37a334593a05eb",
+  "pixray/text2image":
+    "5c347a4bfa1d4523a58ae614c2194e15f2ae682b57e3797a5bb468920aa70ebf",
 };
+
+const Models = {
+  "gpt-3.5-turbo": 4096,
+  "gpt-3.5-turbo-0301": 4096,
+  "gpt-4": 8192,
+  "gpt-4-0314": 8192,
+  "gpt-4-32k": 32768,
+  "gpt-4-32k-0314": 32768,
+  "dall·e-image": 24576,
+};
+
+type Model = keyof typeof Models;
 
 const Config = {
   MAX_DAY_COUNT,
   MAX_DAY_AD_COUNT: 10,
+  Models,
   prompts,
-  Models: {
-    "gpt-3.5-turbo": 4096,
-    "gpt-3.5-turbo-0301": 4096,
-    "gpt-4": 8192,
-    "gpt-4-0314": 8192,
-    "gpt-4-32k": 32768,
-    "gpt-4-32k-0314": 32768,
-    "dall·e-image": 24576,
-  },
   replicates: Object.keys(replicates),
   whitelist: ["oKjj-0BThCDOWmDjgPiY9E90BFsk"],
 };
@@ -158,11 +169,44 @@ serve(async (request: Request) => {
   };
   socket.onmessage = async (e) => {
     try {
-      const { type, action, key, moderation_level = "", ...options } = JSON
+      const {
+        type,
+        action,
+        key,
+        moderation_level = "",
+        messages,
+        model,
+        ...options
+      } = JSON
         .parse(e.data);
       // console.log("socket message:", e.data);
       // 采用 socket 方式返回分流信息
       if (type === "chat") {
+        const tokens = messages.reduce(
+          (acc: string, cur: { content: string }) => {
+            const token = countTokens(cur.content);
+            return acc + token;
+          },
+          0,
+        );
+
+        if (tokens > Models[model as Model]) {
+          socket.send(
+            JSON.stringify({
+              type: "ok",
+              status: 200,
+              content:
+                "由于开启了连续对话选项，导致本次对话过长，请清除部分内容后重试，或者关闭连续对话选项。",
+            }),
+          );
+          socket.send(
+            JSON.stringify({
+              type: "done",
+              status: 200
+            }),
+          );
+          return;
+        }
         const auth = key.includes(MY_KEY) && getDayCount(openid) > 0
           ? APIKEY
           : key;
@@ -178,6 +222,8 @@ serve(async (request: Request) => {
           body: JSON.stringify({
             // max_tokens: 4096 - tokens,
             stream: true,
+            model,
+            messages,
             ...options,
           }),
         }).catch((err) => {
@@ -232,16 +278,16 @@ serve(async (request: Request) => {
                 }
                 sentences[openid].char += char;
                 if (
-                  char === "，" || char == "。" || char == "？"
-                  || char == "！" || char == "\n"
+                  char === "，" || char == "。" || char == "？" ||
+                  char == "！" || char == "\n"
                 ) {
                   // 将断句 sentence 送审
                   sentences[openid].chars.push(sentences[openid].char);
                   sentences[openid].char = "";
                 }
                 if (
-                  sentences[openid].chars.length > 0
-                  && sentences[openid].status === 0
+                  sentences[openid].chars.length > 0 &&
+                  sentences[openid].status === 0
                 ) {
                   const sentence = sentences[openid].chars.pop() || "";
                   sentences[openid].status = 1;
