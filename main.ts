@@ -1,4 +1,4 @@
-import "https://deno.land/x/dotenv/load.ts";
+// import "https://deno.land/x/dotenv/load.ts";
 import { serve } from "https://deno.land/std@0.181.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.82.0/encoding/base64.ts";
 import type { ParsedEvent, ReconnectInterval } from "https://esm.sh/eventsource-parser@1.0.0";
@@ -39,15 +39,16 @@ const Config = {
   MAX_DAY_AD_COUNT: 10,
   prompts,
   Models: {
-    "gpt-3.5-turbo": 3072,
-    "gpt-3.5-turbo-0301": 3072,
-    "gpt-4": 6144,
-    "gpt-4-0314": 6144,
-    "gpt-4-32k": 24576,
-    "gpt-4-32k-0314": 24576,
-    "dall·e-image": 24576
+    "gpt-3.5-turbo": 4096,
+    "gpt-3.5-turbo-0301": 4096,
+    "gpt-4": 8192,
+    "gpt-4-0314": 8192,
+    "gpt-4-32k": 32768,
+    "gpt-4-32k-0314": 32768,
+    "dall·e-image": 24576,
   },
   replicates: Object.keys(replicates),
+  whitelist: ["oKjj-0BThCDOWmDjgPiY9E90BFsk"],
 };
 
 const clientConfig = {
