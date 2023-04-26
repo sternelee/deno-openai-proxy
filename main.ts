@@ -1,4 +1,4 @@
-import "https://deno.land/x/dotenv/load.ts"; // TODO: 本地开发时打开
+// import "https://deno.land/x/dotenv/load.ts"; // TODO: 本地开发时打开
 import { serve } from "https://deno.land/std@0.181.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.82.0/encoding/base64.ts";
 import type {
