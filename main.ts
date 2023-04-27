@@ -296,7 +296,7 @@ serve(async (request: Request) => {
               if (!sentences[openid]) {
                 sentences[openid] = { status: 0, char: content, chars: [], code: false };
               } else {
-                content = sentences[openid].char.split(content)[1]
+                content = content.split(sentences[openid].char)[1]
                 sentences[openid].char += content
               }
               data = JSON.stringify({id: 1, object: '', created: '', model, choices: [{ delta: { content }, index: 0, finish_reason: null }]})
