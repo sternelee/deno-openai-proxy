@@ -225,13 +225,14 @@ serve(async (request: Request) => {
           );
           return;
         }
-        const auth = key.includes(MY_KEY) && getDayCount(openid) > 0
+        let auth = key.includes(MY_KEY) && getDayCount(openid) > 0
           ? APIKEY
           : key;
         const isFree = model.includes('free')
         let url = isFree ? `http://${CHAT_API_HOST}${action}` : `https://${OPENAI_API_HOST}${action}`
         if (model === 'chatglm-6b-free') {
           url = `https://${CHATGLM_HOST}${action}`
+          auth = 'lee961103'
         }
         const controller = new AbortController();
         const model_name = model.includes('poe-') ? POE_MAP[model.replace('-free', '').replace('poe-', '') as keyof typeof POE_MAP] : (model.includes('new-bing') ? 'bing' : model)
