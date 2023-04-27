@@ -13,7 +13,7 @@ import { countTokens } from "./utils/index.ts";
 
 const OPENAI_API_HOST = Deno.env.get("OPENAI_API_HOST") || "api.openai.com";
 const CHAT_API_HOST = Deno.env.get("CHAT_API_HOST") || "chat.sterne.cn";
-const CHATGLM_HOST = Deno.env.get("CHATGLM_HOST") || "";
+const CHATGLM_HOST = Deno.env.get("CHATGLM_HOST") || "bd58-35-203-136-26.ngrok-free.app";
 const APIKEY = Deno.env.get("OPEN_AI_KEY");
 const APPID = Deno.env.get("APPID");
 const SECRET = Deno.env.get("SECRET");
@@ -51,7 +51,7 @@ const prompts = parsePrompts();
 // };
 
 const Models = {
-  // "chatglm-6b-free": 4096,
+  "chatglm-6b-free": 4096,
   // "gpt-3.5-turbo": 4096,
   // "gpt-3.5-turbo-0301": 4096,
   // "gpt-4": 8192,
