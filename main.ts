@@ -34,7 +34,7 @@ const POE_MAP = {
   Sage: 'capybara',
   Claude: 'a2',
   Dragonfly: 'nutria',
-  // ChatGPT: 'chinchilla'
+  ChatGPT: 'chinchilla'
 }
 
 const prompts = parsePrompts();
@@ -62,7 +62,7 @@ const Models = {
   "new-bing-free": 4096,
   "poe-Sage-free": 4096,
   "poe-Claude-free": 4096,
-  "poe-ChatGPT-free": 4096,
+  // "poe-ChatGPT-free": 4096,
   "poe-Dragonfly-free": 4096,
 };
 
