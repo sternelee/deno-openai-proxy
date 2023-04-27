@@ -13,10 +13,13 @@ import { countTokens } from "./utils/index.ts";
 
 const OPENAI_API_HOST = Deno.env.get("OPENAI_API_HOST") || "api.openai.com";
 const CHAT_API_HOST = Deno.env.get("CHAT_API_HOST") || "chat.sterne.cn";
-const CHATGLM_HOST = Deno.env.get("CHATGLM_HOST") || "bd58-35-203-136-26.ngrok-free.app";
+const CHATGLM_HOST = Deno.env.get("CHATGLM_HOST") ||
+  "bd58-35-203-136-26.ngrok-free.app";
 const APIKEY = Deno.env.get("OPEN_AI_KEY");
 const APPID = Deno.env.get("APPID");
 const SECRET = Deno.env.get("SECRET");
+// const APPID_QQ = Deno.env.get("APPID_QQ");
+// const SECRET_QQ = Deno.env.get("SECRET_QQ");
 // const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN");
 const MY_KEY = Deno.env.get("MY_KEY");
 const MAX_DAY_COUNT = 6;
@@ -31,11 +34,11 @@ const TENCENT_CLOUD_SKEY = Deno.env.get("TENCENT_CLOUD_SKEY");
 const TENCENT_CLOUD_AP = Deno.env.get("TENCENT_CLOUD_AP") || "ap-singapore";
 
 const POE_MAP = {
-  Sage: 'capybara',
-  Claude: 'a2',
-  Dragonfly: 'nutria',
-  ChatGPT: 'chinchilla'
-}
+  Sage: "capybara",
+  Claude: "a2",
+  Dragonfly: "nutria",
+  ChatGPT: "chinchilla",
+};
 
 const prompts = parsePrompts();
 
@@ -63,7 +66,7 @@ const Models = {
   "poe-Claude-free": 4096,
   "poe-ChatGPT-free": 4096,
   "poe-Dragonfly-free": 4096,
-  "new-bing-free": 4096,
+  // "new-bing-free": 4096,
 };
 
 type Model = keyof typeof Models;
@@ -144,12 +147,18 @@ serve(async (request: Request) => {
     }
 
     if (url.pathname === "/jscode2session") {
+      const js_code = url.searchParams.get(
+        "js_code",
+      );
+      const href = `https://api.weixin.qq.com/sns/jscode2session?js_code=${js_code}&appid=${APPID}&secret=${SECRET}&grant_type=authorization_code`
+      // const type = url.searchParams.get(
+      //   "type",
+      // ) || "wx";
+      // const href = type === "qq"
+      //   ? `https://api.q.qq.com/sns/jscode2session?js_code=${js_code}&appid=${APPID_QQ}&secret=${SECRET_QQ}&grant_type=authorization_code`
+      //   : `https://api.weixin.qq.com/sns/jscode2session?js_code=${js_code}&appid=${APPID}&secret=${SECRET}&grant_type=authorization_code`;
       const ret = await fetch(
-        `https://api.weixin.qq.com/sns/jscode2session?js_code=${
-          url.searchParams.get(
-            "js_code",
-          )
-        }&appid=${APPID}&secret=${SECRET}&grant_type=authorization_code`,
+        href,
       ).then((response) => response.json());
       if (ret.openid) {
         return new Response(JSON.stringify(
@@ -220,7 +229,7 @@ serve(async (request: Request) => {
           socket.send(
             JSON.stringify({
               type: "done",
-              status: 200
+              status: 200,
             }),
           );
           return;
@@ -228,15 +237,24 @@ serve(async (request: Request) => {
         let auth = key.includes(MY_KEY) && getDayCount(openid) > 0
           ? APIKEY
           : key;
-        const isFree = model.includes('free')
-        let url = isFree ? `http://${CHAT_API_HOST}${action}` : `https://${OPENAI_API_HOST}${action}`
-        if (model === 'chatglm-6b-free') {
-          url = `https://${CHATGLM_HOST}${action}`
-          auth = 'lee961103'
+        const isFree = model.includes("free");
+        let url = isFree
+          ? `http://${CHAT_API_HOST}${action}`
+          : `https://${OPENAI_API_HOST}${action}`;
+        if (model === "chatglm-6b-free") {
+          url = `https://${CHATGLM_HOST}${action}`;
+          auth = "lee961103";
         }
         const controller = new AbortController();
-        const model_name = model.includes('poe-') ? POE_MAP[model.replace('-free', '').replace('poe-', '') as keyof typeof POE_MAP] : (model.includes('new-bing') ? 'bing' : model)
-        console.log('model_name', model_name)
+        const model_name = model.includes("poe-")
+          ? POE_MAP[
+            model.replace("-free", "").replace(
+              "poe-",
+              "",
+            ) as keyof typeof POE_MAP
+          ]
+          : (model.includes("new-bing") ? "bing" : model);
+        console.log("model_name", model_name);
         const rawRes = await fetch(url, {
           headers: {
             "Content-Type": "application/json",
@@ -283,31 +301,60 @@ serve(async (request: Request) => {
         const streamParser = async (event: ParsedEvent | ReconnectInterval) => {
           if (event.type === "event") {
             let data = event.data;
-            console.log('data:', data)
-            if (model.includes('bing')) {
-              if (data.indexOf('(True,') > -1) {
-                delete sentences[openid]
-                controller.abort()
-                return socket.send(JSON.stringify({ type: "done", status: 200 }));
+            // console.log("data:", data);
+            if (model.includes("bing")) {
+              if (data.indexOf("(True,") > -1) {
+                delete sentences[openid];
+                controller.abort();
+                return socket.send(
+                  JSON.stringify({ type: "done", status: 200 }),
+                );
               }
-              let content = ''
+              let content = "";
               data.replace(/\(False, '(.*)'\)$/g, ($1, $2) => {
-                content = $2
-              })
-              if (!sentences[openid]) {
-                sentences[openid] = { status: 0, char: content, chars: [], code: false };
-              } else {
-                content = content.split(sentences[openid].char)[1]
-                sentences[openid].char += content
-              }
-              data = JSON.stringify({id: 1, object: '', created: '', model, choices: [{ delta: { content }, index: 0, finish_reason: null }]})
+                content = $2;
+              });
+              if (content.length < 3) return
+              // if (!sentences[openid]) {
+              //   sentences[openid] = {
+              //     status: 0,
+              //     char: content,
+              //     chars: [],
+              //     code: false,
+              //   };
+              // } else {
+              //   content = content.split(sentences[openid].char)[1];
+              //   sentences[openid].char += content;
+              // }
+              // console.log('content:', content)
+              data = JSON.stringify({
+                id: 1,
+                object: "",
+                created: "",
+                model,
+                choices: [{
+                  delta: { content },
+                  index: 0,
+                  finish_reason: null,
+                }],
+              });
             }
             if (data === "[DONE]") {
               // TODO: 这里最好也审核下
               return socket.send(JSON.stringify({ type: "done", status: 200 }));
             }
-            if (model.includes('poe-')) {
-              data = JSON.stringify({id: 1, object: '', created: '', model, choices: [{ delta: { content: data }, index: 0, finish_reason: null }]})
+            if (model.includes("poe-")) {
+              data = JSON.stringify({
+                id: 1,
+                object: "",
+                created: "",
+                model,
+                choices: [{
+                  delta: { content: data },
+                  index: 0,
+                  finish_reason: null,
+                }],
+              });
             }
             try {
               const json = JSON.parse(data);
@@ -318,15 +365,20 @@ serve(async (request: Request) => {
                 JSON.stringify({ type: "ok", status: 200, content: char }),
               );
               // 文本审核
-              if (mdClient && char && model_name !== 'bing') {
+              if (mdClient && char && model_name !== "bing") {
                 if (!sentences[openid]) {
-                  sentences[openid] = { status: 0, char: "", chars: [], code: false };
+                  sentences[openid] = {
+                    status: 0,
+                    char: "",
+                    chars: [],
+                    code: false,
+                  };
                 }
                 // TODO: 代码片段不送审
-                if (char.includes('```')) {
-                  sentences[openid].code = !sentences[openid].code
+                if (char.includes("```")) {
+                  sentences[openid].code = !sentences[openid].code;
                 }
-                if (sentences[openid].code) return
+                if (sentences[openid].code) return;
                 sentences[openid].char += char;
                 if (
                   ["，", "。", "？", "！", "\n"].includes(char)
@@ -352,7 +404,12 @@ serve(async (request: Request) => {
                     ? md_result.Suggestion != "Pass"
                     : md_result.Suggestion == "Block";
                   if (md_check) {
-                    sentences[openid] = { status: 0, char: "", chars: [], code: false };
+                    sentences[openid] = {
+                      status: 0,
+                      char: "",
+                      chars: [],
+                      code: false,
+                    };
                     controller.abort();
                     socket.send(
                       JSON.stringify({
