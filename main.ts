@@ -64,7 +64,7 @@ const Models = {
   // "dall·e-image": 24576,
   "poe-Sage-free": 4096,
   "poe-Claude-free": 4096,
-  "poe-ChatGPT-free": 4096,
+  // "poe-ChatGPT-free": 4096,
   "poe-Dragonfly-free": 4096,
   "new-bing-free": 4096,
 };
