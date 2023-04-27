@@ -34,7 +34,7 @@ const POE_MAP = {
   Sage: 'capybara',
   Claude: 'a2',
   Dragonfly: 'nutria',
-  ChatGPT: 'chinchilla'
+  // ChatGPT: 'chinchilla'
 }
 
 const prompts = parsePrompts();
@@ -52,14 +52,14 @@ const prompts = parsePrompts();
 
 const Models = {
   // "chatglm-6b-free": 4096,
-  "gpt-3.5-turbo": 4096,
-  "gpt-3.5-turbo-0301": 4096,
-  "gpt-4": 8192,
-  "gpt-4-0314": 8192,
-  "gpt-4-32k": 32768,
-  "gpt-4-32k-0314": 32768,
-  "dall·e-image": 24576,
-  // "new-bing-free": 4096,
+  // "gpt-3.5-turbo": 4096,
+  // "gpt-3.5-turbo-0301": 4096,
+  // "gpt-4": 8192,
+  // "gpt-4-0314": 8192,
+  // "gpt-4-32k": 32768,
+  // "gpt-4-32k-0314": 32768,
+  // "dall·e-image": 24576,
+  "new-bing-free": 4096,
   "poe-Sage-free": 4096,
   "poe-Claude-free": 4096,
   "poe-ChatGPT-free": 4096,
@@ -285,6 +285,7 @@ serve(async (request: Request) => {
             console.log('data:', data)
             if (model.includes('bing')) {
               if (data.indexOf('(True,') > -1) {
+                delete sentences[openid]
                 controller.abort()
                 return socket.send(JSON.stringify({ type: "done", status: 200 }));
               }
@@ -292,6 +293,12 @@ serve(async (request: Request) => {
               data.replace(/\(False, '(.*)'\)$/g, ($1, $2) => {
                 content = $2
               })
+              if (!sentences[openid]) {
+                sentences[openid] = { status: 0, char: content, chars: [], code: false };
+              } else {
+                content = sentences[openid].char.split(content)[1]
+                sentences[openid].char += content
+              }
               data = JSON.stringify({id: 1, object: '', created: '', model, choices: [{ delta: { content }, index: 0, finish_reason: null }]})
             }
             if (data === "[DONE]") {
@@ -304,13 +311,13 @@ serve(async (request: Request) => {
             try {
               const json = JSON.parse(data);
               const char = json.choices[0].delta?.content;
-              console.log("char:", char);
+              // console.log("char:", char);
               // TODO: 先响应出去
               char && socket.send(
                 JSON.stringify({ type: "ok", status: 200, content: char }),
               );
               // 文本审核
-              if (mdClient && char) {
+              if (mdClient && char && model_name !== 'bing') {
                 if (!sentences[openid]) {
                   sentences[openid] = { status: 0, char: "", chars: [], code: false };
                 }
