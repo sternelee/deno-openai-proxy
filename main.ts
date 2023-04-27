@@ -52,18 +52,18 @@ const prompts = parsePrompts();
 
 const Models = {
   "chatglm-6b-free": 4096,
-  // "gpt-3.5-turbo": 4096,
-  // "gpt-3.5-turbo-0301": 4096,
-  // "gpt-4": 8192,
-  // "gpt-4-0314": 8192,
-  // "gpt-4-32k": 32768,
-  // "gpt-4-32k-0314": 32768,
-  // "dall·e-image": 24576,
-  "new-bing-free": 4096,
+  "gpt-3.5-turbo": 4096,
+  "gpt-3.5-turbo-0301": 4096,
+  "gpt-4": 8192,
+  "gpt-4-0314": 8192,
+  "gpt-4-32k": 32768,
+  "gpt-4-32k-0314": 32768,
+  "dall·e-image": 24576,
   "poe-Sage-free": 4096,
   "poe-Claude-free": 4096,
-  // "poe-ChatGPT-free": 4096,
+  "poe-ChatGPT-free": 4096,
   "poe-Dragonfly-free": 4096,
+  "new-bing-free": 4096,
 };
 
 type Model = keyof typeof Models;
