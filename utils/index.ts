@@ -38,3 +38,13 @@ export function countTokensDollar(
       return completion ? (tokens / 1000) * 0.06 : (tokens / 1000) * 0.12
   }
 }
+
+export function maxDiffStr (minStr: string, maxStr: string) {
+  const n = minStr.length;
+  for (let i = 0; i < n; i++) {
+    if (minStr[i] !== maxStr[i]) {
+      return maxStr.slice(i)
+    }
+  }
+  return maxStr.slice(n)
+}

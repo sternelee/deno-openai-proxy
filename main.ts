@@ -9,7 +9,7 @@ import { createParser } from "https://esm.sh/eventsource-parser@1.0.0";
 // import Replicate from "https://esm.sh/replicate@0.10.0";
 import * as tencentcloud from "https://esm.sh/tencentcloud-sdk-nodejs@4.0.578";
 import { parsePrompts } from "./utils/prompt.ts";
-import { countTokens } from "./utils/index.ts";
+import { countTokens, maxDiffStr } from "./utils/index.ts";
 
 const OPENAI_API_HOST = Deno.env.get("OPENAI_API_HOST") || "api.openai.com";
 const CHAT_API_HOST = Deno.env.get("CHAT_API_HOST") || "chat.sterne.cn";
@@ -66,7 +66,7 @@ const Models = {
   "poe-Claude-free": 4096,
   "poe-ChatGPT-free": 4096,
   "poe-Dragonfly-free": 4096,
-  // "new-bing-free": 4096,
+  "new-bing-free": 4096,
 };
 
 type Model = keyof typeof Models;
@@ -315,17 +315,17 @@ serve(async (request: Request) => {
                 content = $2;
               });
               if (content.length < 3) return
-              // if (!sentences[openid]) {
-              //   sentences[openid] = {
-              //     status: 0,
-              //     char: content,
-              //     chars: [],
-              //     code: false,
-              //   };
-              // } else {
-              //   content = content.split(sentences[openid].char)[1];
-              //   sentences[openid].char += content;
-              // }
+              if (!sentences[openid]) {
+                sentences[openid] = {
+                  status: 0,
+                  char: content,
+                  chars: [],
+                  code: false,
+                };
+              } else {
+                content = maxDiffStr(sentences[openid].char, content);
+                sentences[openid].char += content;
+              }
               // console.log('content:', content)
               data = JSON.stringify({
                 id: 1,
@@ -442,6 +442,7 @@ serve(async (request: Request) => {
         socket.send(new Date().toString());
       }
     } catch (e) {
+      if (e.message.includes('aborted')) return
       socket.send(e.message);
     }
   };
