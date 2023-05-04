@@ -54,7 +54,7 @@ const prompts = parsePrompts();
 // };
 
 const Models = {
-  "chatglm-6b-free": 4096,
+  // "chatglm-6b-free": 4096,
   "gpt-3.5-turbo": 4096,
   "gpt-3.5-turbo-0301": 4096,
   "gpt-4": 8192,
